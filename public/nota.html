@@ -260,7 +260,7 @@
             <span class="val"><span class="rack-val">${m.BinLocation}</span><span class="source-tag">${m.source}</span></span>
           </div>
           <div class="card-row"><span class="key">Nama</span><span class="val">${m.ItemName || '—'}</span></div>
-          <div class="card-row"><span class="key">Stok</span><span class="val">${m.Stock} ${m.UnitName || ''}</span></div>
+          <div class="card-row"><span class="key">Stok</span><span class="val">${m.Stock > 0 ? 'Ada' : '-'}</span></div>
           ${i < r.matches.length - 1 ? '<hr class="match-divider">' : ''}
         `).join('');
         return `<div class="result-card"><div class="card-title">${r.code}</div>${blocks}</div>`;
