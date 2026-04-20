@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#ffffff" />
+  <title>Pencari Rak Instant — MGNDEV</title>
+  <link rel="stylesheet" href="/css/style.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Amiri+Quran&family=DynaPuff:wght@400..700&display=swap" rel="stylesheet" />
+</head>
+<body>
+  <div class="login-wrap">
+    <div class="login-card">
+      <h1>PENCARI RAK INSTANT</h1>
+      <p class="subtitle">-MGNDEV-</p>
+
+      <div class="login-error" id="login-error" style="display:none"></div>
+
+      <form id="login-form" autocomplete="off">
+        <div class="form-group">
+          <label for="username">Username</label>
+          <input type="text" id="username" autocomplete="username" required />
+        </div>
+        <div class="form-group">
+          <label for="password">Password</label>
+          <div class="password-wrap">
+            <input type="password" id="password" autocomplete="current-password" required />
+            <button type="button" class="pw-toggle" id="pw-toggle" aria-label="Tampilkan password">
+              <svg id="icon-eye" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                <circle cx="12" cy="12" r="3"/>
+              </svg>
+              <svg id="icon-eye-off" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none">
+                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
+                <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
+                <line x1="1" y1="1" x2="23" y2="23"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+        <button type="submit" class="btn-login">LOGIN</button>
+      </form>
+    </div>
+  </div>
+
+  <script type="module">
+    // Password toggle
+    const pwInput = document.getElementById('password');
+    const pwToggle = document.getElementById('pw-toggle');
+    const iconEye = document.getElementById('icon-eye');
+    const iconEyeOff = document.getElementById('icon-eye-off');
+
+    pwToggle.addEventListener('click', () => {
+      const isPassword = pwInput.type === 'password';
+      pwInput.type = isPassword ? 'text' : 'password';
+      iconEye.style.display = isPassword ? 'none' : '';
+      iconEyeOff.style.display = isPassword ? '' : 'none';
+    });
+
+    async function checkSession() {
+      try {
+        const r = await fetch('/api/me');
+        if (r.ok) window.location.href = '/home.html';
+      } catch {}
+    }
+    checkSession();
+
+    document.getElementById('login-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const u = document.getElementById('username').value;
+      const p = document.getElementById('password').value;
+      const err = document.getElementById('login-error');
+
+      try {
+        const r = await fetch('/api/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: u, password: p }),
+        });
+        const data = await r.json();
+        if (data.ok) {
+          window.location.href = '/home.html';
+        } else {
+          err.textContent = data.error || 'Username atau password salah.';
+          err.style.display = '';
+        }
+      } catch {
+        err.textContent = 'Terjadi kesalahan. Coba lagi.';
+        err.style.display = '';
+      }
+    });
+  </script>
+</body>
+</html>

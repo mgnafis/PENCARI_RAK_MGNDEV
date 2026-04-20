@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Admin — MGNDEV</title>
+  <link rel="stylesheet" href="/css/style.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Amiri+Quran&family=DynaPuff:wght@400..700&display=swap" rel="stylesheet" />
+</head>
+<body>
+
+  <nav class="navbar">
+    <div class="navbar-brand"></div>
+    <div class="navbar-links">
+      <a href="/home.html">Home</a>
+      <a href="/nota.html">Scan Nota</a>
+      <a href="/admin.html" class="active">Admin</a>
+      <button id="btn-logout">Logout</button>
+    </div>
+  </nav>
+
+  <div class="main">
+    <div class="page-title">-MGNDEV-</div>
+
+    <div class="admin-wrap">
+
+      <!-- Add User -->
+      <div class="admin-card">
+        <div class="admin-card-title">Tambah User Baru</div>
+        <div class="login-error" id="add-error" style="display:none"></div>
+        <div class="form-group">
+          <label for="new-username">Username</label>
+          <input type="text" id="new-username" placeholder="Ketik username baru" autocomplete="off" />
+        </div>
+        <div class="form-group">
+          <label for="new-password">Password</label>
+          <div class="password-wrap">
+            <input type="password" id="new-password" placeholder="Ketik password" autocomplete="new-password" />
+            <button type="button" class="pw-toggle" id="pw-toggle-add">
+              <svg id="icon-eye-add" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+              </svg>
+              <svg id="icon-eye-off-add" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none">
+                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
+                <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
+                <line x1="1" y1="1" x2="23" y2="23"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+        <button class="btn-login" id="btn-add-user" style="width:100%;margin-top:0.5rem;">Tambah User</button>
+      </div>
+
+      <!-- User List -->
+      <div class="admin-card">
+        <div class="admin-card-title">Daftar User</div>
+        <div id="user-list"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <script type="module">
+    // ── Auth check ────────────────────────────────────────────────────────
+    async function checkAuth() {
+      try {
+        const r = await fetch('/api/me');
+        if (r.status === 401) window.location.href = '/';
+        else {
+          const data = await r.json();
+          if (data.user !== 'admin') window.location.href = '/home.html';
+        }
+      } catch { window.location.href = '/'; }
+    }
+    checkAuth();
+
+    document.getElementById('btn-logout').addEventListener('click', async () => {
+      await fetch('/api/logout', { method: 'POST' });
+      window.location.href = '/';
+    });
+
+    // ── Password toggle ───────────────────────────────────────────────────
+    function setupToggle(inputId, btnId, eyeId, eyeOffId) {
+      const input = document.getElementById(inputId);
+      const btn = document.getElementById(btnId);
+      const eye = document.getElementById(eyeId);
+      const eyeOff = document.getElementById(eyeOffId);
+      btn.addEventListener('click', () => {
+        const isPw = input.type === 'password';
+        input.type = isPw ? 'text' : 'password';
+        eye.style.display = isPw ? 'none' : '';
+        eyeOff.style.display = isPw ? '' : 'none';
+      });
+    }
+    setupToggle('new-password', 'pw-toggle-add', 'icon-eye-add', 'icon-eye-off-add');
+
+    // ── Load users ────────────────────────────────────────────────────────
+    async function loadUsers() {
+      try {
+        const r = await fetch('/api/admin/users');
+        const data = await r.json();
+        renderUsers(data.users || []);
+      } catch {
+        document.getElementById('user-list').innerHTML = '<p style="color:var(--muted);font-size:0.85rem;">Gagal memuat daftar user.</p>';
+      }
+    }
+
+    function renderUsers(users) {
+      const el = document.getElementById('user-list');
+      if (!users.length) {
+        el.innerHTML = '<p style="color:var(--muted);font-size:0.85rem;">Belum ada user.</p>';
+        return;
+      }
+      el.innerHTML = users.map(u => `
+        <div class="user-row">
+          <div class="user-info">
+            <span class="user-name">${u.username}</span>
+            ${u.username === 'admin' ? '<span class="user-badge">Admin</span>' : ''}
+          </div>
+          ${u.username !== 'admin' ? `
+            <button class="btn-delete-user" data-username="${u.username}">Hapus</button>
+          ` : ''}
+        </div>
+      `).join('');
+
+      // Attach delete handlers
+      el.querySelectorAll('.btn-delete-user').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const username = btn.dataset.username;
+          if (!confirm(`Hapus user "${username}"?`)) return;
+          try {
+            const r = await fetch('/api/admin/users', {
+              method: 'DELETE',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ username }),
+            });
+            const data = await r.json();
+            if (data.error) {
+              alert(data.error);
+            } else {
+              loadUsers();
+            }
+          } catch { alert('Gagal menghapus user.'); }
+        });
+      });
+    }
+
+    loadUsers();
+
+    // ── Add user ─────────────────────────────────────────────────────────
+    const addError = document.getElementById('add-error');
+    document.getElementById('btn-add-user').addEventListener('click', async () => {
+      const username = document.getElementById('new-username').value.trim();
+      const password = document.getElementById('new-password').value;
+      addError.style.display = 'none';
+
+      if (!username || !password) {
+        addError.textContent = 'Username dan password wajib diisi.';
+        addError.style.display = '';
+        return;
+      }
+
+      try {
+        const r = await fetch('/api/admin/users', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password }),
+        });
+        const data = await r.json();
+        if (data.error) {
+          addError.textContent = data.error;
+          addError.style.display = '';
+        } else {
+          document.getElementById('new-username').value = '';
+          document.getElementById('new-password').value = '';
+          loadUsers();
+        }
+      } catch {
+        addError.textContent = 'Terjadi kesalahan. Coba lagi.';
+        addError.style.display = '';
+      }
+    });
+  </script>
+
+  <style>
+    .admin-wrap { display: flex; flex-direction: column; gap: 1rem; }
+    .admin-card {
+      background: var(--bg);
+      border: 1px solid var(--border-2);
+      border-radius: 12px;
+      padding: 1.25rem;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+    }
+    .admin-card-title {
+      font-family: 'DynaPuff', sans-serif;
+      font-size: 0.95rem;
+      font-weight: 700;
+      margin-bottom: 1rem;
+      color: var(--text);
+    }
+    .form-group { margin-bottom: 0.75rem; }
+    .form-group label {
+      display: block;
+      font-family: 'DynaPuff', sans-serif;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+      margin-bottom: 0.35rem;
+    }
+    .form-group input {
+      width: 100%;
+      padding: 0.7rem 1rem;
+      border: 1.5px solid var(--border);
+      background: var(--bg);
+      font-size: 0.95rem;
+      color: var(--text);
+      outline: none;
+      font-family: inherit;
+      border-radius: 8px;
+      -webkit-appearance: none;
+    }
+    .form-group input:focus { border-color: var(--text); }
+    .btn-login {
+      display: block; width: 100%;
+      padding: 0.75rem;
+      background: var(--text); color: #fff;
+      border: none;
+      font-size: 0.9rem;
+      font-family: 'DynaPuff', sans-serif;
+      cursor: pointer;
+      border-radius: 8px;
+      touch-action: manipulation;
+    }
+    .btn-login:active { background: #333; }
+    .login-error {
+      background: #fff0f0; border: 1px solid #fcc;
+      padding: 0.6rem 0.85rem;
+      font-size: 0.8rem;
+      margin-bottom: 0.75rem;
+      border-radius: 8px;
+      color: #c00;
+      font-family: 'DynaPuff', sans-serif;
+    }
+    .user-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.6rem 0;
+      border-bottom: 1px solid var(--border-2);
+    }
+    .user-row:last-child { border-bottom: none; }
+    .user-info { display: flex; align-items: center; gap: 0.5rem; }
+    .user-name {
+      font-family: 'DynaPuff', sans-serif;
+      font-size: 0.9rem;
+      font-weight: 600;
+    }
+    .user-badge {
+      font-family: 'DynaPuff', sans-serif;
+      font-size: 0.65rem;
+      background: var(--text);
+      color: #fff;
+      padding: 0.15rem 0.5rem;
+      border-radius: 20px;
+      font-weight: 700;
+    }
+    .btn-delete-user {
+      font-family: 'DynaPuff', sans-serif;
+      font-size: 0.75rem;
+      background: none;
+      border: 1.5px solid #c00;
+      color: #c00;
+      padding: 0.3rem 0.75rem;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    .btn-delete-user:active { background: #fff0f0; }
+  </style>
+
+</body>
+</html>
